@@ -220,7 +220,12 @@ async function rotateBackground() {
 }
 
 // ── Cast SDK init ─────────────────────────────────────────────────────────────
+let loopsStarted = false;
+
 function startAllLoops() {
+  if (loopsStarted) return;
+  loopsStarted = true;
+
   updateClock();
   setInterval(updateClock, 1000);
 
@@ -247,7 +252,7 @@ window['__onGCastApiAvailable'] = function (isAvailable) {
   context.start({ disableIdleTimeout: true });
 };
 
-// Fallback: if Cast SDK never loads (direct browser preview), start anyway
+// Fallback: if Cast SDK hasn't started loops within 3s, start anyway (direct browser preview)
 setTimeout(() => {
-  if (typeof cast === 'undefined') startAllLoops();
-}, 2000);
+  if (!loopsStarted) startAllLoops();
+}, 3000);
