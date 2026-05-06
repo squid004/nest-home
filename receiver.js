@@ -1,7 +1,7 @@
 // ── Configuration ────────────────────────────────────────────────────────────
-const USER_LAT      = 42.3601;   // Set to your actual coordinates
-const USER_LON      = -71.0589;
-const UNSPLASH_KEY  = 'YOUR_UNSPLASH_KEY_HERE';
+const USER_LAT      = 40.4795929;   
+const USER_LON      = -80.141606;
+const UNSPLASH_KEY  = 'TUTnYBBWM1DSOpmj_o5yyalXrYU1feP6ipQfFPOUpek';
 const RADIUS_DEG    = 0.3;       // ~20 mile bounding box
 
 // ── WMO weather code → { icon, label } ───────────────────────────────────────
@@ -223,5 +223,5 @@ window['__onGCastApiAvailable'] = function (isAvailable) {
     cast.framework.system.EventType.READY,
     () => startAllLoops()
   );
-  context.start();
+  context.start({ disableIdleTimeout: true });
 };
