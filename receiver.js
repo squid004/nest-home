@@ -48,6 +48,7 @@ async function fetchWeather() {
       `?latitude=${USER_LAT}&longitude=${USER_LON}` +
       `&current=temperature_2m,weathercode` +
       `&daily=temperature_2m_max,temperature_2m_min` +
+      `&hourly=precipitation_probability,weathercode` +
       `&temperature_unit=fahrenheit&forecast_days=1&timezone=auto`;
     const res  = await fetch(url);
     const data = await res.json();
@@ -62,6 +63,23 @@ async function fetchWeather() {
     document.getElementById('weather-temp').textContent  = `${temp}°F`;
     document.getElementById('weather-label').textContent = info.label;
     document.getElementById('weather-hilo').textContent  = `H: ${hi}°  L: ${lo}°`;
+
+    const precipEl = document.getElementById('weather-precip');
+    const currentHour = new Date().getHours();
+    const probs  = data.hourly.precipitation_probability.slice(currentHour + 1, 24);
+    const codes  = data.hourly.weathercode.slice(currentHour + 1, 24);
+    const maxProb = Math.max(...probs);
+    if (maxProb >= 20) {
+      const peakIdx  = probs.indexOf(maxProb);
+      const peakCode = codes[peakIdx];
+      const isSnow   = [71, 73, 75, 77, 85, 86].includes(peakCode);
+      const icon     = isSnow ? '🌨' : '🌧';
+      const word     = maxProb >= 60 ? 'likely' : maxProb >= 40 ? 'possible' : 'slight chance of';
+      const type     = isSnow ? 'snow' : 'rain';
+      precipEl.textContent = `${icon} ${word.charAt(0).toUpperCase() + word.slice(1)} ${type} later · ${maxProb}%`;
+    } else {
+      precipEl.textContent = '';
+    }
   } catch (e) {
     console.error('Weather fetch failed', e);
   }

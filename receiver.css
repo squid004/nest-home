@@ -84,6 +84,15 @@ html, body {
   margin-top: 4px;
 }
 
+#weather-precip {
+  width: 100%;
+  text-align: center;
+  font-size: 28px;
+  font-weight: 300;
+  opacity: 0.8;
+  margin-top: 6px;
+}
+
 /* ── Plane widget (bottom-right) ─────────────────────────────────── */
 #plane-card {
   position: absolute;
