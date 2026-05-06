@@ -196,7 +196,7 @@ async function fetchPlanes() {
 // ── Background photos ─────────────────────────────────────────────────────────
 async function fetchNextBackground() {
   try {
-    const url = `https://api.unsplash.com/photos/random?orientation=landscape&query=landscape&client_id=${UNSPLASH_KEY}`;
+    const url = `https://api.unsplash.com/photos/random?orientation=landscape&topics=nature&query=landscape+scenery&client_id=${UNSPLASH_KEY}`;
     const res  = await fetch(url);
     const data = await res.json();
     return data.urls.regular;
