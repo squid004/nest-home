@@ -249,7 +249,9 @@ window['__onGCastApiAvailable'] = function (isAvailable) {
     cast.framework.system.EventType.READY,
     () => startAllLoops()
   );
-  context.start({ disableIdleTimeout: true });
+  const options = new cast.framework.CastReceiverOptions();
+  options.disableIdleTimeout = true;
+  context.start(options);
 };
 
 // Fallback: if Cast SDK hasn't started loops within 3s, start anyway (direct browser preview)
