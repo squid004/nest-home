@@ -1,6 +1,6 @@
 // ── Configuration ────────────────────────────────────────────────────────────
-const USER_LAT      = 40.4795929;   
-const USER_LON      = -80.141606;
+const USER_LAT      = 40.48;
+const USER_LON      = -80.14;
 const UNSPLASH_KEY  = 'TUTnYBBWM1DSOpmj_o5yyalXrYU1feP6ipQfFPOUpek';
 const RADIUS_DEG    = 0.3;       // ~20 mile bounding box
 
