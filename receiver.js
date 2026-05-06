@@ -217,7 +217,10 @@ function startAllLoops() {
 }
 
 window['__onGCastApiAvailable'] = function (isAvailable) {
-  if (!isAvailable) return;
+  if (!isAvailable) {
+    startAllLoops();
+    return;
+  }
   const context = cast.framework.CastReceiverContext.getInstance();
   context.addEventListener(
     cast.framework.system.EventType.READY,
@@ -225,3 +228,8 @@ window['__onGCastApiAvailable'] = function (isAvailable) {
   );
   context.start({ disableIdleTimeout: true });
 };
+
+// Fallback: if Cast SDK never loads (direct browser preview), start anyway
+setTimeout(() => {
+  if (typeof cast === 'undefined') startAllLoops();
+}, 2000);
