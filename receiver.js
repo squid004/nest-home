@@ -2,7 +2,7 @@
 const USER_LAT      = 40.48;
 const USER_LON      = -80.14;
 const UNSPLASH_KEY  = 'TUTnYBBWM1DSOpmj_o5yyalXrYU1feP6ipQfFPOUpek';
-const RADIUS_DEG    = 5.0;       // ~345 mile bounding box (testing)
+const RADIUS_NM     = 250;       // nautical miles radius (wide for testing)
 
 // ── WMO weather code → { icon, label } ───────────────────────────────────────
 const WEATHER_CODES = {
@@ -28,7 +28,6 @@ const WEATHER_CODES = {
 };
 
 // ── State ─────────────────────────────────────────────────────────────────────
-const metadataCache = {};
 let bgCurrent = document.getElementById('bg-current');
 let bgNext    = document.getElementById('bg-next');
 
@@ -86,47 +85,6 @@ async function fetchWeather() {
 }
 
 // ── Planes ────────────────────────────────────────────────────────────────────
-function distKm(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-async function fetchPlaneMetadata(icao24, callsign) {
-  const results = { airline: '', aircraft: '', origin: '', destination: '' };
-  try {
-    if (!metadataCache[icao24]) {
-      const res  = await fetch(`https://opensky-network.org/api/metadata/aircraft/icao/${icao24}`);
-      if (res.ok) metadataCache[icao24] = await res.json();
-    }
-    const meta = metadataCache[icao24];
-    if (meta) {
-      results.airline  = meta.operator || meta.manufacturerName || '';
-      results.aircraft = [meta.manufacturerName, meta.model].filter(Boolean).join(' ');
-    }
-  } catch (e) { /* non-fatal */ }
-
-  try {
-    const trimmed = (callsign || '').trim();
-    if (trimmed) {
-      const res  = await fetch(`https://opensky-network.org/api/routes?callsign=${trimmed}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.route && data.route.length >= 2) {
-          results.origin      = data.route[0];
-          results.destination = data.route[data.route.length - 1];
-        }
-      }
-    }
-  } catch (e) { /* non-fatal */ }
-
-  return results;
-}
-
 function renderPlane(plane) {
   document.getElementById('plane-callsign').textContent = plane.callsign || '—';
   document.getElementById('plane-airline').textContent  = plane.airline  || '';
@@ -137,13 +95,11 @@ function renderPlane(plane) {
     : '';
   document.getElementById('plane-route').textContent = route;
 
-  const altFt  = plane.geo_altitude != null
-    ? Math.round(plane.geo_altitude * 3.281).toLocaleString() + ' ft'
-    : plane.baro_altitude != null
-    ? Math.round(plane.baro_altitude * 3.281).toLocaleString() + ' ft'
+  const altFt  = plane.alt_ft != null
+    ? Math.round(plane.alt_ft).toLocaleString() + ' ft'
     : '';
-  const spdMph = plane.velocity != null
-    ? Math.round(plane.velocity * 2.237) + ' mph'
+  const spdMph = plane.speed_mph != null
+    ? Math.round(plane.speed_mph) + ' mph'
     : '';
   document.getElementById('plane-stats').textContent = [altFt, spdMph].filter(Boolean).join('  ·  ');
 }
@@ -158,36 +114,29 @@ function renderClearSkies() {
 
 async function fetchPlanes() {
   try {
-    const lamin = USER_LAT - RADIUS_DEG;
-    const lamax = USER_LAT + RADIUS_DEG;
-    const lomin = USER_LON - RADIUS_DEG;
-    const lomax = USER_LON + RADIUS_DEG;
-    const url   = `https://opensky-network.org/api/states/all?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`;
-    const res   = await fetch(url);
-    const data  = await res.json();
+    const url  = `https://opendata.adsb.fi/api/v2/lat/${USER_LAT}/lon/${USER_LON}/dist/${RADIUS_NM}`;
+    const res  = await fetch(url);
+    const data = await res.json();
 
-    if (!data.states || data.states.length === 0) {
-      renderClearSkies();
-      return;
-    }
+    if (!data.ac || data.ac.length === 0) { renderClearSkies(); return; }
 
-    // Sort by distance, pick closest
-    const sorted = data.states
-      .filter(s => s[5] != null && s[6] != null)
-      .map(s => ({ raw: s, dist: distKm(USER_LAT, USER_LON, s[6], s[5]) }))
-      .sort((a, b) => a.dist - b.dist);
+    // Filter out aircraft on the ground, sort by distance
+    const airborne = data.ac
+      .filter(a => typeof a.alt_baro === 'number' && a.alt_baro > 0)
+      .sort((a, b) => (a.dst || 9999) - (b.dst || 9999));
 
-    if (sorted.length === 0) { renderClearSkies(); return; }
+    if (airborne.length === 0) { renderClearSkies(); return; }
 
-    const closest  = sorted[0].raw;
-    const icao24   = closest[0];
-    const callsign = (closest[1] || '').trim();
-    const baro_alt = closest[7];
-    const geo_alt  = closest[13];
-    const velocity = closest[9];
+    const a        = airborne[0];
+    const callsign = (a.flight || '').trim();
+    const airline  = a.ownOp || '';
+    const aircraft = a.desc  || a.t  || '';
+    const alt_ft   = typeof a.alt_geom === 'number' ? a.alt_geom
+                   : typeof a.alt_baro === 'number' ? a.alt_baro
+                   : null;
+    const speed_mph = typeof a.gs === 'number' ? Math.round(a.gs * 1.15078) : null;
 
-    const meta = await fetchPlaneMetadata(icao24, callsign);
-    renderPlane({ callsign, baro_altitude: baro_alt, geo_altitude: geo_alt, velocity, ...meta });
+    renderPlane({ callsign, airline, aircraft, alt_ft, speed_mph });
   } catch (e) {
     console.error('Plane fetch failed', e);
   }
