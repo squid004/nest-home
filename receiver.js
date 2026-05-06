@@ -28,6 +28,7 @@ const WEATHER_CODES = {
 };
 
 // ── State ─────────────────────────────────────────────────────────────────────
+const routeCache = {};
 let bgCurrent = document.getElementById('bg-current');
 let bgNext    = document.getElementById('bg-next');
 
@@ -112,9 +113,27 @@ function renderClearSkies() {
   document.getElementById('plane-stats').textContent    = '';
 }
 
+async function fetchRoute(callsign) {
+  if (!callsign) return { origin: '', destination: '' };
+  if (routeCache[callsign]) return routeCache[callsign];
+  try {
+    const res  = await fetch(`https://api.adsbdb.com/v0/callsign/${callsign}`);
+    if (!res.ok) return { origin: '', destination: '' };
+    const data = await res.json();
+    const r    = data?.response?.flightroute;
+    const result = r
+      ? { origin: r.origin?.iata_code || '', destination: r.destination?.iata_code || '' }
+      : { origin: '', destination: '' };
+    routeCache[callsign] = result;
+    return result;
+  } catch (e) {
+    return { origin: '', destination: '' };
+  }
+}
+
 async function fetchPlanes() {
   try {
-    const url  = `https://opendata.adsb.fi/api/v2/lat/${USER_LAT}/lon/${USER_LON}/dist/${RADIUS_NM}`;
+    const url  = `https://api.adsb.lol/v2/lat/${USER_LAT}/lon/${USER_LON}/dist/${RADIUS_NM}`;
     const res  = await fetch(url);
     const data = await res.json();
 
@@ -135,8 +154,9 @@ async function fetchPlanes() {
                    : typeof a.alt_baro === 'number' ? a.alt_baro
                    : null;
     const speed_mph = typeof a.gs === 'number' ? Math.round(a.gs * 1.15078) : null;
+    const route    = await fetchRoute(callsign);
 
-    renderPlane({ callsign, airline, aircraft, alt_ft, speed_mph });
+    renderPlane({ callsign, airline, aircraft, alt_ft, speed_mph, ...route });
   } catch (e) {
     console.error('Plane fetch failed', e);
   }
