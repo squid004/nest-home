@@ -1,0 +1,140 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 1024px;
+  height: 600px;
+  overflow: hidden;
+  background: #000;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  color: #fff;
+}
+
+/* ── Background layers ───────────────────────────────────────────── */
+.bg-layer {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  transition: opacity 2s ease-in-out;
+}
+
+#bg-current { opacity: 1; z-index: 0; }
+#bg-next    { opacity: 0; z-index: 1; }
+
+/* ── Overlay ─────────────────────────────────────────────────────── */
+#overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    to bottom,
+    rgba(0,0,0,0.15) 0%,
+    rgba(0,0,0,0.35) 60%,
+    rgba(0,0,0,0.55) 100%
+  );
+}
+
+/* ── Center block (time + weather) ───────────────────────────────── */
+#center {
+  text-align: center;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.7);
+  user-select: none;
+}
+
+#time {
+  font-size: 96px;
+  font-weight: 200;
+  letter-spacing: -2px;
+  line-height: 1;
+}
+
+#date {
+  font-size: 22px;
+  font-weight: 300;
+  margin-top: 6px;
+  opacity: 0.9;
+}
+
+#weather {
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+#weather-icon  { font-size: 32px; }
+#weather-temp  { font-size: 36px; font-weight: 300; }
+#weather-label { font-size: 24px; font-weight: 300; opacity: 0.85; }
+
+#weather-hilo {
+  width: 100%;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 300;
+  opacity: 0.75;
+  margin-top: 4px;
+}
+
+/* ── Plane widget (bottom-right) ─────────────────────────────────── */
+#plane-card {
+  position: absolute;
+  bottom: 28px;
+  right: 28px;
+  background: rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 14px;
+  padding: 14px 18px;
+  min-width: 190px;
+  text-shadow: none;
+  user-select: none;
+}
+
+#plane-header {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  opacity: 0.6;
+  margin-bottom: 8px;
+}
+
+#plane-callsign {
+  font-size: 20px;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+#plane-airline {
+  font-size: 13px;
+  opacity: 0.8;
+  margin-bottom: 1px;
+}
+
+#plane-aircraft {
+  font-size: 12px;
+  opacity: 0.65;
+  margin-bottom: 8px;
+}
+
+#plane-route {
+  font-size: 15px;
+  font-weight: 400;
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+}
+
+#plane-stats {
+  font-size: 13px;
+  opacity: 0.75;
+}
