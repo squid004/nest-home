@@ -1,4 +1,4 @@
-const APP_ID = 'YOUR_CAST_APP_ID_HERE';
+const APP_ID = '84F51F91';
 
 window['__onGCastApiAvailable'] = function (isAvailable) {
   if (!isAvailable) return;
