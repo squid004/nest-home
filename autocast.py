@@ -12,7 +12,7 @@ import logging
 import pychromecast
 
 # ── Config ────────────────────────────────────────────────────────────────────
-DEVICE_NAME  = "Your Nest Hub Name"   # Friendly name shown in Google Home app
+DEVICE_NAME  = "Kitchen Display"   # Friendly name shown in Google Home app
 APP_ID       = "84F51F91"
 POLL_SECONDS = 30
 # ─────────────────────────────────────────────────────────────────────────────
