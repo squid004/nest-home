@@ -49,14 +49,14 @@ html, body {
 }
 
 #time {
-  font-size: 96px;
+  font-size: 192px;
   font-weight: 200;
   letter-spacing: -2px;
   line-height: 1;
 }
 
 #date {
-  font-size: 22px;
+  font-size: 44px;
   font-weight: 300;
   margin-top: 6px;
   opacity: 0.9;
@@ -71,14 +71,14 @@ html, body {
   flex-wrap: wrap;
 }
 
-#weather-icon  { font-size: 32px; }
-#weather-temp  { font-size: 36px; font-weight: 300; }
-#weather-label { font-size: 24px; font-weight: 300; opacity: 0.85; }
+#weather-icon  { font-size: 64px; }
+#weather-temp  { font-size: 72px; font-weight: 300; }
+#weather-label { font-size: 48px; font-weight: 300; opacity: 0.85; }
 
 #weather-hilo {
   width: 100%;
   text-align: center;
-  font-size: 16px;
+  font-size: 32px;
   font-weight: 300;
   opacity: 0.75;
   margin-top: 4px;
@@ -101,7 +101,7 @@ html, body {
 }
 
 #plane-header {
-  font-size: 11px;
+  font-size: 22px;
   font-weight: 600;
   letter-spacing: 1.5px;
   text-transform: uppercase;
@@ -110,31 +110,31 @@ html, body {
 }
 
 #plane-callsign {
-  font-size: 20px;
+  font-size: 40px;
   font-weight: 500;
   margin-bottom: 2px;
 }
 
 #plane-airline {
-  font-size: 13px;
+  font-size: 26px;
   opacity: 0.8;
   margin-bottom: 1px;
 }
 
 #plane-aircraft {
-  font-size: 12px;
+  font-size: 24px;
   opacity: 0.65;
   margin-bottom: 8px;
 }
 
 #plane-route {
-  font-size: 15px;
+  font-size: 30px;
   font-weight: 400;
   margin-bottom: 6px;
   letter-spacing: 0.5px;
 }
 
 #plane-stats {
-  font-size: 13px;
+  font-size: 26px;
   opacity: 0.75;
 }
