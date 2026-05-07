@@ -137,10 +137,10 @@ async function fetchPlanes() {
     const res  = await fetch(url);
     const data = await res.json();
 
-    if (!data.ac || data.ac.length === 0) { renderClearSkies(); return; }
+    if (!data.aircraft || data.aircraft.length === 0) { renderClearSkies(); return; }
 
     // Filter out aircraft on the ground, sort by distance
-    const airborne = data.ac
+    const airborne = data.aircraft
       .filter(a => typeof a.alt_baro === 'number' && a.alt_baro > 0)
       .sort((a, b) => (a.dst || 9999) - (b.dst || 9999));
 
