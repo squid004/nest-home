@@ -1,6 +1,6 @@
 // ── Configuration ────────────────────────────────────────────────────────────
-const USER_LAT      = 40.496963;
-const USER_LON      = -80.102366;
+const USER_LAT      = 40.48;
+const USER_LON      = -80.14;
 const UNSPLASH_KEY  = 'TUTnYBBWM1DSOpmj_o5yyalXrYU1feP6ipQfFPOUpek';
 const RADIUS_NM     = 30;        // nautical miles radius (~35 miles, PIT approach corridor)
 
