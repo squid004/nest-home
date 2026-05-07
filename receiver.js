@@ -118,7 +118,10 @@ async function fetchRoute(callsign) {
   if (routeCache[callsign]) return routeCache[callsign];
   try {
     const res  = await fetch(`https://api.adsbdb.com/v0/callsign/${callsign}`);
-    if (!res.ok) return { origin: '', destination: '' };
+    if (!res.ok) {
+      routeCache[callsign] = { origin: '', destination: '' };
+      return { origin: '', destination: '' };
+    }
     const data = await res.json();
     const r    = data?.response?.flightroute;
     const result = r
@@ -127,6 +130,7 @@ async function fetchRoute(callsign) {
     routeCache[callsign] = result;
     return result;
   } catch (e) {
+    routeCache[callsign] = { origin: '', destination: '' };
     return { origin: '', destination: '' };
   }
 }
@@ -139,31 +143,24 @@ async function fetchPlanes() {
 
     if (!data.aircraft || data.aircraft.length === 0) { renderClearSkies(); return; }
 
-    // Filter out aircraft on the ground, sort by distance
-    const airborne = data.aircraft
-      .filter(a => typeof a.alt_baro === 'number' && a.alt_baro > 0)
-      .sort((a, b) => (a.dst || 9999) - (b.dst || 9999))
-      .slice(0, 20);  // Check closest 20 aircraft for PIT arrivals
+    // Filter: airborne and below 15,000 ft, sort by distance
+    const lowAltitude = data.aircraft
+      .filter(a => typeof a.alt_baro === 'number' && a.alt_baro > 0 && a.alt_baro < 15000)
+      .sort((a, b) => (a.dst || 9999) - (b.dst || 9999));
 
-    if (airborne.length === 0) { renderClearSkies(); return; }
+    if (lowAltitude.length === 0) { renderClearSkies(); return; }
 
-    // Find first aircraft landing at Pittsburgh (PIT)
-    for (const a of airborne) {
-      const callsign = (a.flight || '').trim();
-      const route = await fetchRoute(callsign);
-      if (route.destination === 'PIT') {
-        const airline  = a.ownOp || '';
-        const aircraft = a.desc  || a.t  || '';
-        const alt_ft   = typeof a.alt_geom === 'number' ? a.alt_geom
-                       : typeof a.alt_baro === 'number' ? a.alt_baro
-                       : null;
-        const speed_mph = typeof a.gs === 'number' ? Math.round(a.gs * 1.15078) : null;
-        renderPlane({ callsign, airline, aircraft, alt_ft, speed_mph, ...route });
-        return;
-      }
-    }
+    const a        = lowAltitude[0];
+    const callsign = (a.flight || '').trim();
+    const airline  = a.ownOp || '';
+    const aircraft = a.desc  || a.t  || '';
+    const alt_ft   = typeof a.alt_geom === 'number' ? a.alt_geom
+                   : typeof a.alt_baro === 'number' ? a.alt_baro
+                   : null;
+    const speed_mph = typeof a.gs === 'number' ? Math.round(a.gs * 1.15078) : null;
+    const route    = await fetchRoute(callsign);
 
-    renderClearSkies();
+    renderPlane({ airline: route.destination ? airline : 'Private', aircraft, alt_ft, speed_mph, ...route });
   } catch (e) {
     console.error('Plane fetch failed', e);
   }
