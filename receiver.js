@@ -87,7 +87,7 @@ async function fetchWeather() {
 
 // ── Planes ────────────────────────────────────────────────────────────────────
 function renderPlane(plane) {
-  document.getElementById('plane-callsign').textContent = plane.callsign || '—';
+  document.getElementById('plane-callsign').textContent = '';
   document.getElementById('plane-airline').textContent  = plane.airline  || '';
   document.getElementById('plane-aircraft').textContent = plane.aircraft || '';
 
