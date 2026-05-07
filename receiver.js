@@ -146,24 +146,32 @@ async function fetchPlanes() {
 
     if (!data.aircraft || data.aircraft.length === 0) { renderClearSkies(); return; }
 
-    // Filter: airborne and below 15,000 ft, sort by distance
-    const lowAltitude = data.aircraft
+    // Filter: airborne and below 15,000 ft, sort by distance, check up to 10
+    const candidates = data.aircraft
       .filter(a => typeof a.alt_baro === 'number' && a.alt_baro > 0 && a.alt_baro < 15000)
-      .sort((a, b) => (a.dst || 9999) - (b.dst || 9999));
+      .sort((a, b) => (a.dst || 9999) - (b.dst || 9999))
+      .slice(0, 10);
 
-    if (lowAltitude.length === 0) { renderClearSkies(); return; }
+    if (candidates.length === 0) { renderClearSkies(); return; }
 
-    const a        = lowAltitude[0];
-    const callsign = (a.flight || '').trim();
-    const airline  = a.ownOp || '';
-    const aircraft = a.desc  || a.t  || '';
-    const alt_ft   = typeof a.alt_geom === 'number' ? a.alt_geom
-                   : typeof a.alt_baro === 'number' ? a.alt_baro
-                   : null;
+    // Fetch routes in parallel, find closest one landing at PIT
+    const withRoutes = await Promise.all(
+      candidates.map(async a => ({ a, route: await fetchRoute((a.flight || '').trim()) }))
+    );
+    const match = withRoutes.find(({ route }) => route.destination === 'PIT');
+
+    if (!match) { renderClearSkies(); return; }
+
+    const { a, route } = match;
+    const callsign  = (a.flight || '').trim();
+    const airline   = a.ownOp || '';
+    const aircraft  = a.desc  || a.t  || '';
+    const alt_ft    = typeof a.alt_geom === 'number' ? a.alt_geom
+                    : typeof a.alt_baro === 'number' ? a.alt_baro
+                    : null;
     const speed_mph = typeof a.gs === 'number' ? Math.round(a.gs * 1.15078) : null;
-    const route    = await fetchRoute(callsign);
 
-    renderPlane({ airline: route.destination ? airline : 'Private', aircraft, alt_ft, speed_mph, ...route });
+    renderPlane({ callsign, airline, aircraft, alt_ft, speed_mph, ...route });
   } catch (e) {
     console.error('Plane fetch failed', e);
   }
