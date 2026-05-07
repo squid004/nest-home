@@ -2,7 +2,7 @@
 const USER_LAT      = 40.48;
 const USER_LON      = -80.14;
 const UNSPLASH_KEY  = 'TUTnYBBWM1DSOpmj_o5yyalXrYU1feP6ipQfFPOUpek';
-const RADIUS_NM     = 250;       // nautical miles radius (wide for testing)
+const RADIUS_NM     = 75;        // nautical miles radius (Pittsburgh area)
 
 // ── WMO weather code → { icon, label } ───────────────────────────────────────
 const WEATHER_CODES = {
@@ -142,21 +142,28 @@ async function fetchPlanes() {
     // Filter out aircraft on the ground, sort by distance
     const airborne = data.aircraft
       .filter(a => typeof a.alt_baro === 'number' && a.alt_baro > 0)
-      .sort((a, b) => (a.dst || 9999) - (b.dst || 9999));
+      .sort((a, b) => (a.dst || 9999) - (b.dst || 9999))
+      .slice(0, 20);  // Check closest 20 aircraft for PIT arrivals
 
     if (airborne.length === 0) { renderClearSkies(); return; }
 
-    const a        = airborne[0];
-    const callsign = (a.flight || '').trim();
-    const airline  = a.ownOp || '';
-    const aircraft = a.desc  || a.t  || '';
-    const alt_ft   = typeof a.alt_geom === 'number' ? a.alt_geom
-                   : typeof a.alt_baro === 'number' ? a.alt_baro
-                   : null;
-    const speed_mph = typeof a.gs === 'number' ? Math.round(a.gs * 1.15078) : null;
-    const route    = await fetchRoute(callsign);
+    // Find first aircraft landing at Pittsburgh (PIT)
+    for (const a of airborne) {
+      const callsign = (a.flight || '').trim();
+      const route = await fetchRoute(callsign);
+      if (route.destination === 'PIT') {
+        const airline  = a.ownOp || '';
+        const aircraft = a.desc  || a.t  || '';
+        const alt_ft   = typeof a.alt_geom === 'number' ? a.alt_geom
+                       : typeof a.alt_baro === 'number' ? a.alt_baro
+                       : null;
+        const speed_mph = typeof a.gs === 'number' ? Math.round(a.gs * 1.15078) : null;
+        renderPlane({ callsign, airline, aircraft, alt_ft, speed_mph, ...route });
+        return;
+      }
+    }
 
-    renderPlane({ callsign, airline, aircraft, alt_ft, speed_mph, ...route });
+    renderClearSkies();
   } catch (e) {
     console.error('Plane fetch failed', e);
   }
