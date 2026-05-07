@@ -133,7 +133,7 @@ async function fetchRoute(callsign) {
 
 async function fetchPlanes() {
   try {
-    const url  = `https://api.adsb.lol/v2/lat/${USER_LAT}/lon/${USER_LON}/dist/${RADIUS_NM}`;
+    const url  = `https://adsb-proxy.jeremy-s-hardy-4.workers.dev/?lat=${USER_LAT}&lon=${USER_LON}&dist=${RADIUS_NM}`;
     const res  = await fetch(url);
     const data = await res.json();
 
