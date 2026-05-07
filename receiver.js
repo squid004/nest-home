@@ -6,22 +6,22 @@ const RADIUS_NM     = 30;        // nautical miles radius (~35 miles, PIT approa
 
 // ── WMO weather code → { icon, label } ───────────────────────────────────────
 const WEATHER_CODES = {
-  0:  { icon: '☀️',  label: 'Clear' },
-  1:  { icon: '🌤️', label: 'Mostly Clear' },
-  2:  { icon: '⛅',  label: 'Partly Cloudy' },
+  0:  { icon: '☀️',  iconNight: '🌙',    label: 'Clear' },
+  1:  { icon: '🌤️', iconNight: '🌙',    label: 'Mostly Clear' },
+  2:  { icon: '⛅',  iconNight: '🌙',   label: 'Partly Cloudy' },
   3:  { icon: '☁️',  label: 'Overcast' },
   45: { icon: '🌫️', label: 'Foggy' },
   48: { icon: '🌫️', label: 'Icy Fog' },
-  51: { icon: '🌦️', label: 'Light Drizzle' },
-  53: { icon: '🌦️', label: 'Drizzle' },
-  55: { icon: '🌦️', label: 'Heavy Drizzle' },
+  51: { icon: '🌦️', iconNight: '🌧️', label: 'Light Drizzle' },
+  53: { icon: '🌦️', iconNight: '🌧️', label: 'Drizzle' },
+  55: { icon: '🌦️', iconNight: '🌧️', label: 'Heavy Drizzle' },
   61: { icon: '🌧️', label: 'Light Rain' },
   63: { icon: '🌧️', label: 'Rain' },
   65: { icon: '🌧️', label: 'Heavy Rain' },
   71: { icon: '🌨️', label: 'Light Snow' },
   73: { icon: '🌨️', label: 'Snow' },
   75: { icon: '❄️',  label: 'Heavy Snow' },
-  80: { icon: '🌦️', label: 'Showers' },
+  80: { icon: '🌦️', iconNight: '🌧️', label: 'Showers' },
   81: { icon: '🌧️', label: 'Heavy Showers' },
   95: { icon: '⛈️',  label: 'Thunderstorm' },
   99: { icon: '⛈️',  label: 'Severe Thunderstorm' },
@@ -47,7 +47,7 @@ async function fetchWeather() {
     const url = `https://api.open-meteo.com/v1/forecast` +
       `?latitude=${USER_LAT}&longitude=${USER_LON}` +
       `&current=temperature_2m,weathercode` +
-      `&daily=temperature_2m_max,temperature_2m_min` +
+      `&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset` +
       `&hourly=precipitation_probability,weathercode` +
       `&temperature_unit=fahrenheit&forecast_days=1&timezone=auto`;
     const res  = await fetch(url);
@@ -57,9 +57,12 @@ async function fetchWeather() {
     const temp   = Math.round(data.current.temperature_2m);
     const hi     = Math.round(data.daily.temperature_2m_max[0]);
     const lo     = Math.round(data.daily.temperature_2m_min[0]);
-    const info   = WEATHER_CODES[code] || { icon: '🌡️', label: 'Unknown' };
+    const info      = WEATHER_CODES[code] || { icon: '🌡️', label: 'Unknown' };
+    const now       = new Date();
+    const isDaytime = now >= new Date(data.daily.sunrise[0]) && now <= new Date(data.daily.sunset[0]);
+    const icon      = (!isDaytime && info.iconNight) ? info.iconNight : info.icon;
 
-    document.getElementById('weather-icon').textContent  = info.icon;
+    document.getElementById('weather-icon').textContent  = icon;
     document.getElementById('weather-temp').textContent  = `${temp}°F`;
     document.getElementById('weather-label').textContent = info.label;
     document.getElementById('weather-hilo').textContent  = `H: ${hi}°  L: ${lo}°`;
