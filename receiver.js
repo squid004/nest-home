@@ -2,7 +2,9 @@
 const USER_LAT      = 40.48;
 const USER_LON      = -80.14;
 const UNSPLASH_KEY  = 'TUTnYBBWM1DSOpmj_o5yyalXrYU1feP6ipQfFPOUpek';
-const RADIUS_NM     = 30;        // nautical miles radius (~35 miles, PIT approach corridor)
+const RADIUS_NM     = 50;        // wider net; glideslope filter handles noise
+const PIT_LAT       = 40.4918;
+const PIT_LON       = -80.2327;
 
 // ── WMO weather code → { icon, label } ───────────────────────────────────────
 const WEATHER_CODES = {
@@ -89,6 +91,41 @@ async function fetchWeather() {
 }
 
 // ── Planes ────────────────────────────────────────────────────────────────────
+function distNm(lat1, lon1, lat2, lon2) {
+  const R = 3440.065;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function bearingTo(lat1, lon1, lat2, lon2) {
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const y = Math.sin(dLon) * Math.cos(lat2 * Math.PI / 180);
+  const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+            Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLon);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
+function isOnApproach(a) {
+  if (a.lat == null || a.lon == null) return false;
+  const distFromPit = distNm(PIT_LAT, PIT_LON, a.lat, a.lon);
+  if (distFromPit > 40) return false;
+  const alt = typeof a.alt_baro === 'number' ? a.alt_baro : null;
+  if (!alt || alt < 500) return false;
+  // Must be at or below the 3° glideslope altitude (+ 4,000 ft buffer for intercept)
+  if (alt > distFromPit * 318 + 4000) return false;
+  // Track must point roughly toward PIT (within 35°)
+  if (a.track != null) {
+    const bearing = bearingTo(a.lat, a.lon, PIT_LAT, PIT_LON);
+    const diff = Math.abs(((a.track - bearing) + 540) % 360 - 180);
+    if (diff > 35) return false;
+  }
+  return true;
+}
+
 function renderPlane(plane) {
   document.getElementById('plane-callsign').textContent = '';
   document.getElementById('plane-airline').textContent  = plane.airline  || '';
@@ -146,19 +183,23 @@ async function fetchPlanes() {
 
     if (!data.aircraft || data.aircraft.length === 0) { renderClearSkies(); return; }
 
-    // Filter: airborne and below 15,000 ft, sort by distance, check up to 10
+    // Airborne candidates sorted by distance from user, top 15
     const candidates = data.aircraft
-      .filter(a => typeof a.alt_baro === 'number' && a.alt_baro > 0 && a.alt_baro < 15000)
+      .filter(a => typeof a.alt_baro === 'number' && a.alt_baro > 0)
       .sort((a, b) => (a.dst || 9999) - (b.dst || 9999))
-      .slice(0, 10);
+      .slice(0, 15);
 
     if (candidates.length === 0) { renderClearSkies(); return; }
 
-    // Fetch routes in parallel, find closest one landing at PIT
+    // Fetch routes in parallel for all candidates
     const withRoutes = await Promise.all(
       candidates.map(async a => ({ a, route: await fetchRoute((a.flight || '').trim()) }))
     );
-    const match = withRoutes.find(({ route }) => route.destination === 'PIT');
+
+    // Accept: confirmed PIT destination, or geometry says on approach (catches untracked private planes)
+    const match = withRoutes.find(({ a, route }) =>
+      route.destination === 'PIT' || isOnApproach(a)
+    );
 
     if (!match) { renderClearSkies(); return; }
 
