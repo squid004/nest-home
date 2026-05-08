@@ -246,42 +246,14 @@ async function rotateBackground() {
   }, 2000);
 }
 
-// ── Cast SDK init ─────────────────────────────────────────────────────────────
-let loopsStarted = false;
+updateClock();
+setInterval(updateClock, 1000);
 
-function startAllLoops() {
-  if (loopsStarted) return;
-  loopsStarted = true;
+fetchWeather();
+setInterval(fetchWeather, 10 * 60 * 1000);
 
-  updateClock();
-  setInterval(updateClock, 1000);
+fetchPlanes();
+setInterval(fetchPlanes, 60 * 1000);
 
-  fetchWeather();
-  setInterval(fetchWeather, 10 * 60 * 1000);
-
-  fetchPlanes();
-  setInterval(fetchPlanes, 60 * 1000);
-
-  rotateBackground();
-  setInterval(rotateBackground, 15 * 60 * 1000);
-}
-
-window['__onGCastApiAvailable'] = function (isAvailable) {
-  if (!isAvailable) {
-    startAllLoops();
-    return;
-  }
-  const context = cast.framework.CastReceiverContext.getInstance();
-  context.addEventListener(
-    cast.framework.system.EventType.READY,
-    () => startAllLoops()
-  );
-  const options = new cast.framework.CastReceiverOptions();
-  options.disableIdleTimeout = true;
-  context.start(options);
-};
-
-// Fallback: if Cast SDK hasn't started loops within 3s, start anyway (direct browser preview)
-setTimeout(() => {
-  if (!loopsStarted) startAllLoops();
-}, 3000);
+rotateBackground();
+setInterval(rotateBackground, 15 * 60 * 1000);
