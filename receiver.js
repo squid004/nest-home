@@ -2,7 +2,7 @@
 const USER_LAT      = 40.48;
 const USER_LON      = -80.14;
 const UNSPLASH_KEY  = 'TUTnYBBWM1DSOpmj_o5yyalXrYU1feP6ipQfFPOUpek';
-const RADIUS_NM     = 50;        // wider net; glideslope filter handles noise
+const RADIUS_NM     = 30;
 const PIT_LAT       = 40.4918;
 const PIT_LON       = -80.2327;
 
