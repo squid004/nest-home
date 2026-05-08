@@ -4,17 +4,23 @@ autocast.py — keeps nest-home running on the Nest Hub automatically.
 Usage:
     python autocast.py
 
-Config: edit the three constants below, then run.
+Config: edit the constants below, then run.
 """
 
+import ssl
 import time
 import logging
 import pychromecast
+from pychromecast.models import CastInfo, HostServiceInfo
 
 # ── Config ────────────────────────────────────────────────────────────────────
-DEVICE_NAME  = "Kitchen Display"   # Friendly name shown in Google Home app
-APP_ID       = "84F51F91"
-POLL_SECONDS = 30
+DEVICE_NAME     = "Kitchen Display"
+DEVICE_HOST     = "192.168.86.55"     # Static IP avoids mDNS discovery issues
+APP_ID          = "84F51F91"
+POLL_SECONDS    = 30
+LAUNCH_COOLDOWN = 120                 # seconds between launch attempts
+TLS_BACKOFF     = 90                  # seconds to wait after a TLS failure
+MAX_BACKOFF     = 600                 # cap exponential backoff at 10 minutes
 # ─────────────────────────────────────────────────────────────────────────────
 
 logging.basicConfig(
@@ -28,57 +34,109 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 
-def find_device():
-    chromecasts, browser = pychromecast.get_listed_chromecasts(
-        friendly_names=[DEVICE_NAME]
+def _make_cast_info():
+    return CastInfo(
+        services={HostServiceInfo(DEVICE_HOST, 8009)},
+        uuid=None,
+        model_name="Google Nest Hub",
+        friendly_name=DEVICE_NAME,
+        host=DEVICE_HOST,
+        port=8009,
+        cast_type="cast",
+        manufacturer="Google",
     )
-    if not chromecasts:
-        pychromecast.discovery.stop_discovery(browser)
-        return None, None
-    cast = chromecasts[0]
-    cast.wait()
-    pychromecast.discovery.stop_discovery(browser)
-    return cast, cast.status
 
 
-def is_our_app_running(cast):
+def get_app_id():
+    """Connect fresh, read app_id, disconnect. Returns (app_id, tls_error)."""
+    cast = None
     try:
-        return cast.app_id == APP_ID
-    except Exception:
+        cast = pychromecast.get_chromecast_from_cast_info(_make_cast_info(), zconf=None)
+        cast.wait(timeout=15)
+        return cast.app_id, False
+    except ssl.SSLError as e:
+        log.warning("TLS handshake failed: %s", e)
+        return None, True
+    except Exception as e:
+        log.warning("Could not connect to %s: %s", DEVICE_HOST, e)
+        return None, False
+    finally:
+        if cast:
+            try:
+                cast.disconnect()
+            except Exception:
+                pass
+
+
+def launch():
+    """Connect, launch the app, disconnect. Returns True if command was sent."""
+    cast = None
+    try:
+        cast = pychromecast.get_chromecast_from_cast_info(_make_cast_info(), zconf=None)
+        cast.wait(timeout=15)
+        log.info("Launching Cast app %s on %s", APP_ID, DEVICE_NAME)
+        cast.start_app(APP_ID, timeout=30)
+        return True
+    except ssl.SSLError as e:
+        log.warning("TLS failure during launch: %s", e)
         return False
-
-
-def launch(cast):
-    log.info("Launching Cast app %s on %s", APP_ID, DEVICE_NAME)
-    cast.start_app(APP_ID)
+    except Exception as e:
+        log.warning("Launch failed: %s", e)
+        return False
+    finally:
+        if cast:
+            try:
+                cast.disconnect()
+            except Exception:
+                pass
 
 
 def main():
     log.info("autocast started — device: %s  app: %s", DEVICE_NAME, APP_ID)
-    cast = None
+    last_launched   = 0.0   # monotonic
+    failure_count   = 0
+    last_state      = None  # track state changes to suppress log spam
 
     while True:
-        try:
-            if cast is None:
-                log.info("Searching for %s …", DEVICE_NAME)
-                cast, status = find_device()
-                if cast is None:
-                    log.warning("Device not found, retrying in %ds", POLL_SECONDS)
-                    time.sleep(POLL_SECONDS)
-                    continue
-                log.info("Found device (is_idle=%s)", cast.is_idle)
+        app_id, tls_error = get_app_id()
 
-            cast.socket_client.ping()  # raises if connection dropped
+        if tls_error:
+            # Give the Nest Hub time to reset its TLS context
+            log.info("Waiting %ds for device TLS recovery", TLS_BACKOFF)
+            time.sleep(TLS_BACKOFF)
+            continue
 
-            if not is_our_app_running(cast):
-                if cast.is_idle:
-                    launch(cast)
+        if app_id is None:
+            failure_count += 1
+            backoff = min(POLL_SECONDS * (2 ** (failure_count - 1)), MAX_BACKOFF)
+            if last_state != "unreachable":
+                log.warning("Device unreachable, backing off (attempt %d)", failure_count)
+                last_state = "unreachable"
+            time.sleep(backoff)
+            continue
+
+        # Successful connect — reset failure counter
+        failure_count = 0
+
+        if app_id == APP_ID:
+            if last_state != "running":
+                log.info("App running OK")
+                last_state = "running"
+        else:
+            now = time.monotonic()
+            if now - last_launched >= LAUNCH_COOLDOWN:
+                log.info("App not running (current: %s), launching …", app_id)
+                launched = launch()
+                if launched:
+                    last_launched = now
+                    last_state = "launching"
                 else:
-                    log.info("Device is busy (app=%s), waiting …", cast.app_id)
-
-        except Exception as e:
-            log.warning("Connection lost (%s), reconnecting …", e)
-            cast = None
+                    last_state = "launch_failed"
+            else:
+                remaining = int(LAUNCH_COOLDOWN - (now - last_launched))
+                if last_state != "cooldown":
+                    log.info("App not running, cooldown active (%ds remaining)", remaining)
+                    last_state = "cooldown"
 
         time.sleep(POLL_SECONDS)
 

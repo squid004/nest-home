@@ -111,6 +111,8 @@ function bearingTo(lat1, lon1, lat2, lon2) {
 
 function isOnApproach(a) {
   if (a.lat == null || a.lon == null) return false;
+  // Must be east of PIT — planes west of the airport can't be flying over the user
+  if (a.lon < PIT_LON) return false;
   const distFromPit = distNm(PIT_LAT, PIT_LON, a.lat, a.lon);
   if (distFromPit > 40) return false;
   const alt = typeof a.alt_baro === 'number' ? a.alt_baro : null;
@@ -196,9 +198,9 @@ async function fetchPlanes() {
       candidates.map(async a => ({ a, route: await fetchRoute((a.flight || '').trim()) }))
     );
 
-    // Accept: confirmed PIT destination, or geometry says on approach (catches untracked private planes)
+    // Accept: confirmed PIT destination east of airport, or geometry says on approach
     const match = withRoutes.find(({ a, route }) =>
-      route.destination === 'PIT' || isOnApproach(a)
+      (route.destination === 'PIT' && a.lon != null && a.lon > PIT_LON) || isOnApproach(a)
     );
 
     if (!match) { renderClearSkies(); return; }
